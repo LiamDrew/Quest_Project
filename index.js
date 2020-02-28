@@ -1,55 +1,14 @@
-//import react
-import React from 'react';
-import ReactDOM from 'react-dom';
-//import css
-import './index.css';
-
-/*
-//creates Game class
-class Game extends React.Component {
-  constructor(props){
-    super(props);
-    //creates a state for game values
-  }
-  render() {
-    return null
-  }
-}
-*/
-
-class Canvas extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      player1: new Player(30, 40),
-      player2: new Player(200, 200),
-    }
-    this.getName = this.getName.bind(this);
-    this.renderPlayer = this.renderPlayer.bind(this);
-
-  }
+var canvas = document.getElementById('myCanvas');
+var ctx = canvas.getContext("2d");
 
 
-  getName(){
-    // this.setState({player2: new Player(500, 500)});
-    this.setState(state => ({
-      player2.xcoord: !state.open
-
-    //this.setState({xcoord: 500});
-    this.drawBoard();
-  }
-
-  renderPlayer(ctx, xcoord, ycoord){
-    ctx.beginPath();
-    ctx.fillStyle = 'black';
-    //fills in player
-    ctx.fillRect(xcoord, ycoord, 25, 25);
-    ctx.stroke();
+class Canvas {
+  constructor(ctx) {
+    this.ctx = ctx;
   }
 
   drawBoard() {
-    let canvas = this.refs.canvas;
-    let ctx = canvas.getContext("2d")
+    //clears frame every time
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     //draw game outline
@@ -74,80 +33,72 @@ class Canvas extends React.Component {
       ctx.lineTo(i*gridSize, screenHeight);
       ctx.stroke();
     }
-
+    //border grid
     ctx.beginPath();
     ctx.lineWidth = 1;
     ctx.rect(0, topMargin, screenWidth, screenHeight-1);
     ctx.moveTo(0, screenHeight);
     ctx.lineTo(screenWidth, screenHeight);
     ctx.stroke();
-
-    //draw player
-    this.renderPlayer(ctx, this.state.player2.xcoord, this.state.player2.ycoord);
-
-
-    return (this.state.player2)
-    //draw grid
-}
-
-  componentDidMount(){
-    let pvalue = this.drawBoard()
-    console.log(pvalue)
-  }
-  componentDidUpdate(){
-    let avalue = this.drawBoard()
-    console.log(avalue)
-  }
-
-  render() {
-    return (
-      <div>
-        <canvas ref="canvas" width="1420" height="733">
-        Your browser does not support the canvas element.
-        </canvas>
-        <div>
-        <button id="add" type="submit" onClick={this.getName}>Get Name</button>
-        </div>
-      </div>
-
-          // <Game />
-    );
   }
 }
 
+let myCanvas = new Canvas(ctx);
+// myCanvas.drawBoard();
 
-class Player extends React.Component {
-  constructor(xcoord, ycoord){
-    super();
+class Player {
+  //lots of stuff will need to be added to this
+  constructor(ctx, xcoord, ycoord){
+    this.ctx = ctx;
     this.xcoord = xcoord;
     this.ycoord = ycoord;
-    // this.refs = refs;
-    // this.canvas = canvas;
+  }
+  moveRight(xcoord, ycoord){
+    for (let i=0; i<100; i++){
+      myCanvas.drawBoard();
+      ctx.beginPath();
+      ctx.fillRect(xcoord+i, ycoord, 25, 25);
+      ctx.stroke();
+    }
+    // myCanvas.drawBoard();
+    // ctx.beginPath();
+    // ctx.fillRect(400, 400, 25, 25);
+    // ctx.stroke();
+  }
 
-  //state of player:
-  //this will need to be expanded and updated significantly
-  this.state = {
-    // xcoord: 80,
-    // ycoord: null,
-    health: null,
-    // inventory: [],
-    // weapon: null,
-    // damage: null
+  drawPlayer(xcoord, ycoord){
+    console.log(xcoord);
+    ctx.beginPath();
+    //draws "player"
+    ctx.fillStyle = "blue";
+    ctx.fillRect(xcoord, ycoord, 25, 25);
+    ctx.stroke();
   }
 }
-  render(){
-    console.log(Canvas.getName())
-    return (
-      <div>
-        <Canvas />
-      </div>
-    );
-  }
+
+let player1 = new Player(ctx, 200, 300);
+
+// myCanvas.drawBoard();
+// player1.drawPlayer(player1.xcoord, player1.ycoord)
+// window.addEventListener(event="keydown", function(e){
+//   console.log('happened');
+//   myCanvas.drawBoard();
+//
+//   if (e.keyCode == 39){
+//     player1.moveRight(player1.xcoord, player1.ycoord);
+//   }
+// })
+myCanvas.drawBoard();
+player1.drawPlayer(player1.xcoord, player1.ycoord)
+
+function RunGame(){
+  window.addEventListener(event="keydown", function(e){
+    console.log('happened');
+    myCanvas.drawBoard();
+
+    if (e.keyCode == 39){
+      window.requestAnimationFrame(player1.moveRight(player1.xcoord, player1.ycoord));
+    }
+  })
 }
-
-// export default Canvas
-
-ReactDOM.render(
-  <Canvas />,
-  document.getElementById('root')
-);
+RunGame()
