@@ -133,9 +133,11 @@ let playerList = [player1, player2]
 //organizing player move into one function
 function renderMove(xy, lr, playerList, player){
   let coords = player.moveDirection(xy, lr);
+  console.log(coords);
   for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
   let raf = window.requestAnimationFrame(function(){renderMove(xy, lr, playerList, player)});
   window.addEventListener(event="keyup", function(e){window.cancelAnimationFrame(raf)});
+  if ((coords[0] >= 1300)|| coords[0] <= 0){window.cancelAnimationFrame(raf)};
 
 }
 
