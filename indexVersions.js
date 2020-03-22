@@ -2,6 +2,8 @@ var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext("2d");
 
 //// TODO:
+//_______________________________________________________
+//
 /*
 Fix:
 see if class method can be used with raf.
@@ -17,6 +19,17 @@ draw them in canvas or import image?
 
 game objects
 */
+let playerWidth = 25;
+let playerHeight = 25;
+function toDegrees(angle){return angle*180/Math.PI};
+function toRadians(angle){return angle*Math.PI/180};
+
+function pickSide(rightSide){
+  //this returns an offset and a scalar
+  //offset is 0 or playerwidth, scalar is for direction (1 or -1)
+  if (rightSide == false){return [0, -1]}
+  else if (rightSide == true){return [playerWidth, 1]}
+}
 
 class Canvas {
   constructor(ctx) {this.ctx = ctx};
@@ -56,31 +69,19 @@ class Canvas {
     ctx.stroke();
   }
 
-  checkCollision(posList){
-    for (let i = 0; i < posList.length; i++){
-      for (let p = 0; p < posList.length; p++){
-      //this will need to be changed
-      //idk what posList will be yet
-      //also this will alert for the same object
-        if (posList[i] == posList[p]){
-          alert('help');
-        }
-      }
-    }
-  }
-
 }
 
 let myCanvas = new Canvas(ctx);
 
 class Player {
-  //lots of stuff will need to be added to this
-  constructor(ctx, xcoord, ycoord){
+  //lots of stuff will need to be added to this (maybe)
+  constructor(ctx, xcoord, ycoord, startAngle){
     this.ctx = ctx;
     this.xcoord = xcoord;
     this.ycoord = ycoord;
-  }
+    this.startAngle = startAngle;
 
+  }
   //move methods
   moveDirection(xy, lr){
     //xy for horizontal vs vertical: true = x, false =y
@@ -98,10 +99,6 @@ class Player {
       ctx.stroke();
     }
   return [this.xcoord, this.ycoord];
-  //// NOTE: Trying to move this code outside of the class, because that is where it worked in the test
-  // window.requestAnimationFrame(function (){
-  //   moveDirection(xy, lr);
-  // })
 }
 
   drawPlayer(){
@@ -112,18 +109,46 @@ class Player {
     ctx.stroke();
   }
 
-  // attack(){
-  //   ctx.beginPath()
-  //   ctx.fillStyle = "red";
-  //   ctx.fillRect(this.xcoord, this.ycoord, 10, 10);
-  //   ctx.stroke();
-  // }
-  //
+  //animates the down-swing
+
+  meleeAttack(off_scal){
+    let swordLength = 30;
+    let swingSpeed = 2;
+    for (let i = 0; i<2; i++){
+
+      //changing the start angle by more each time increases the speed
+      //starting at 1, may increase
+      this.startAngle = this.startAngle-swingSpeed;
+      //positions for the end of the sword
+      let swordX = Math.cos(toRadians(this.startAngle))*swordLength;
+      let swordY = Math.sin(toRadians(this.startAngle))*swordLength;
+      // swordX = Math.cos(startAngle)
+      myCanvas.drawBoard();
+      //this draws the sword
+      //this will need to be changed for better graphics
+      ctx.beginPath()
+      ctx.fillStyle = "red";
+      //x coordinate of the sword. depends on player and offset
+      ctx.moveTo(this.xcoord + off_scal[0], this.ycoord);
+      //y coord of sword. this
+      ctx.lineTo(this.xcoord+(swordX*off_scal[1])+off_scal[0], this.ycoord-swordY)
+      ctx.stroke()
+    }
+    //this is some badly written code to stop the loop error
+    if (this.startAngle > -90){return(this.startAngle)};
+    if (this.startAngle <= -90){
+      this.startAngle = 90;
+      return (-91)};
+  }
+
 
 }
+
+
+
 //creating 2 players for development purposes:
-let player1 = new Player(ctx, 200, 300);
-let player2 = new Player(ctx, 400, 500);
+let player1 = new Player(ctx, 200, 300, 90);
+let player2 = new Player(ctx, 400, 500, 90);
 //all new players get added to this list
 let playerList = [player1, player2]
 
@@ -133,22 +158,26 @@ let playerList = [player1, player2]
 //organizing player move into one function
 function renderMove(xy, lr, playerList, player){
   let coords = player.moveDirection(xy, lr);
-  console.log(coords);
   for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
   let raf = window.requestAnimationFrame(function(){renderMove(xy, lr, playerList, player)});
   window.addEventListener(event="keyup", function(e){window.cancelAnimationFrame(raf)});
-  if ((coords[0] >= 1300)|| coords[0] <= 0){window.cancelAnimationFrame(raf)};
-
+  if (coords[0] >= 1300){window.cancelAnimationFrame(raf)};
 }
 
-//no touch
-// function stopPlayer(){
-//   player1.drawPlayer();
-//   window.requestAnimationFrame(function(){
-//     stopPlayer()
-//   })
-//
-// }
+function renderMeleeAttack(playerList, player, rightSide){
+  let ins_list = pickSide(rightSide);
+  //calls player melee attack function
+  let matak = player.meleeAttack(ins_list);
+  //draws player every time this runs (to refresh the board)
+  for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
+  //starts requestAnimationFrame
+  let raf2 = window.requestAnimationFrame(function(){renderMeleeAttack(playerList, player, rightSide)})
+
+  let limitAngle = -90
+  if (matak < limitAngle){
+    window.cancelAnimationFrame(raf2);
+  }
+}
 
 
 // NOTE: my current problem of players disappearing when others move
@@ -157,9 +186,24 @@ function drawAllPlayers(playerList){
   myCanvas.drawBoard();
   for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
 }
+//runs on start
 drawAllPlayers(playerList);
 
+function swingSide(player, mouseX){
+  if (mouseX > player.xcoord){return true}
+  else if (mouseX < player.xcoord){return false}
+}
+
+window.addEventListener(event ="click", function(e){
+  let side = swingSide(player1, e.clientX);
+  window.requestAnimationFrame(function(){
+    renderMeleeAttack(playerList, player1, side);
+  })
+
+})
+
 window.addEventListener(event="keydown", function(e){
+  console.log('raf firing')
   if (e.repeat == true){return true};
 
   switch (e.keyCode){
@@ -193,4 +237,3 @@ window.addEventListener(event="keydown", function(e){
   }
   drawAllPlayers(playerList);
 })
-//making a change for github
