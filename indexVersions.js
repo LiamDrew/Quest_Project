@@ -136,7 +136,7 @@ function renderMove(xy, lr, playerList, player){
   for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
   let raf = window.requestAnimationFrame(function(){renderMove(xy, lr, playerList, player)});
   window.addEventListener(event="keyup", function(e){window.cancelAnimationFrame(raf)});
-  if (coords[0] >= 1300){window.cancelAnimationFrame(raf)};
+
 }
 
 //no touch
