@@ -37,14 +37,13 @@ io.on('connection', function(socket){
   socket.emit('sendClientUsername', connections.slice(-1)[0])
   console.log(connections.slice(-1)[0])
 
-  if (allPlayers.length > 0){
-    socket.emit('allExistingPlayers', allPlayers)
+  if (connections.length > 1){
+    socket.emit('allExistingPlayers', connections)
   }
 
-  socket.on('sendingNewPlayer', function(player){
+  socket.on('sendingNewPlayer', function(user){
     console.log('New Player BroadCasted')
-    allPlayers.push(player)
-    socket.broadcast.emit('broadcastingNewPlayer', player)
+    socket.broadcast.emit('broadcastingNewPlayer', user)
   })
 
   socket.on('playerMoved', function(coords){

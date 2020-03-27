@@ -61,6 +61,11 @@ class Player extends Component{
   constructor(ctx, xcoord, ycoord, dimensions, color, name){
     super(ctx, name, xcoord, ycoord, color, dimensions);
   }
+  //for debugging purposes
+  isProperty(){
+    console.log('I am a property that can be called')
+  }
+
   moveTo(x, y){
     this.xcoord = x;
     this.ycoord = y;
@@ -69,8 +74,7 @@ class Player extends Component{
     return [this.xcoord, this.ycoord];
   }
   //move methods
-  moveDirection(isHorizontal, posNeg, playerList){
-    var storeList = playerList;
+  moveDirection(isHorizontal, posNeg){
     var self = this;
     //isHorizontal for horizontal vs vertical: true = x, false =y
     //posNeg for direction: 1 is positive (down, right), -1 is negative (up, left). Also determines speed.
@@ -78,12 +82,10 @@ class Player extends Component{
       if (isHorizontal===true){this.xcoord=this.xcoord+posNeg}
       else if (isHorizontal === false){this.ycoord = this.ycoord+posNeg}};
     myCanvas.drawBoard();
-    // console.log(playerList)
-    // for (let p = 0; p < storeList; p++){
-    //   storeList[p].drawPlayer();
-    // }
+    for (let p; p< existingPlayers.length; p++){
+      existingPlayers[p].drawPlayer();
+    }
     this.drawPlayer()
-    otherPlayer.drawPlayer();
 
     let raf = window.requestAnimationFrame(function(){self.moveDirection(isHorizontal, posNeg)});
     window.addEventListener(event="keyup", function(e){window.cancelAnimationFrame(raf)})
@@ -100,36 +102,48 @@ class Player extends Component{
   }
 }
 
-var myUser = []
+var myUser = null
 var player1 = null;
 var existingPlayers = []
 let player1Dimensions = [25, 25];
 
+function drawAllPlayers(players){
+  for (let i = 0; i<players.length; i++){
+    players[i].drawPlayer();
+  }
 
+}
 //socket stuff
 var socket = io();
 socket.on('sendClientUsername', function(user){
-  myUser.length = 0;
-  myUser.push(user);
+  console.log(user)
+  myUser = user;
   player1 = new Player(ctx, 200, 300, player1Dimensions, 'green', myUser[0])
-  socket.emit('sendingNewPlayer', player1);
+  socket.emit('sendingNewPlayer', user);
 })
 
-socket.on('allExistingPlayers', function(players){
-  existingPlayers = players;
+socket.on('allExistingPlayers', function(connections){
+  for (let i=0; i<connections.length; i++){
+    if (connections[i] == myUser){
+      console.log('do nothing, this is me')
+    }
+    else{
+      let newPlayer = new Player(ctx, 600, 600, player1Dimensions, 'black', connections[i])
+      existingPlayers.push(newPlayer);
+    }
+  }
   console.log('all players loaded')
   console.log(existingPlayers)
 })
 
-socket.on('broadcastingNewPlayer', function(player){
-  existingPlayers.push(player);
+socket.on('broadcastingNewPlayer', function(user){
+  let aNewPlayer = new Player(ctx, 500, 400, player1Dimensions, 'brown', user)
+  existingPlayers.push(aNewPlayer);
   console.log('new player loaded')
   console.log(existingPlayers)
 })
 
 // let otherPlayer = new Player(ctx, 500, 500, player1Dimensions, 'red', 'otherPlayer');
-
-playerList = [player1, otherPlayer]
 
 
 socket.on('newPlayerCoords', function(coords){
@@ -140,10 +154,13 @@ socket.on('newPlayerCoords', function(coords){
   }
   else {
     console.log('Another Player Moved')
-    console.log(existingPlayers);
-    otherPlayer.drawPlayer()
     player1.drawPlayer()
-    otherPlayer.moveTo(coords[1], coords[2]);
+    for (i=0; i<existingPlayers.length; i++){
+      if (coords[0]==existingPlayers[i].name){
+        console.log('made it jere')
+        existingPlayers[i].moveTo(coords[1], coords[2]);
+      }
+    }
   }
 })
 
@@ -153,22 +170,21 @@ window.addEventListener(event="keydown", function(e){
   switch (e.keyCode){
     case 39:
       let outsideRaf = window.requestAnimationFrame(function(){
-        console.log(typeof(playerList));
-        // player1.moveDirection(true, 1, playerList)
+        player1.moveDirection(true, 1)
         // renderMove(player1);
       })
       break;
 
     case 37:
-      window.requestAnimationFrame(function(){player1.moveDirection(true, -1, playerList)});
+      window.requestAnimationFrame(function(){player1.moveDirection(true, -1, existingPlayers)});
       break;
 
     case 38:
-      window.requestAnimationFrame(function(){player1.moveDirection(false, -1, playerList)});
+      window.requestAnimationFrame(function(){player1.moveDirection(false, -1, existingPlayers)});
       break;
 
     case 40:
-      window.requestAnimationFrame(function(){player1.moveDirection(false, 1, playerList)});
+      window.requestAnimationFrame(function(){player1.moveDirection(false, 1, existingPlayers)});
       break;
 
   }
