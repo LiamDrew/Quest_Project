@@ -3,8 +3,9 @@ var app = express()
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 var path = require('path')
-// var gamecode = require('/game.js')
-
+var connections = [];
+var allPlayers = []
+var counter = 1;
 
 app.get('/', function(req, res){
   console.log('getting')
@@ -15,20 +16,46 @@ app.get('/', function(req, res){
   // res.send(test)
 });
 
-
 // io.on('connection', function(socket){
-//   socket.broadcast.emit('hi');
-//   console.log('a user connected');
-//   socket.on('chat message', function(msg){
-//     io.emit('chat message', msg);
-//     console.log('message: ' + msg);
-//   });
-//   socket.on('disconnect', function(){
-//     console.log('user disconnected');
-//   });
-// });
-//
-//
+//   console.log('a player connected');
+//   socket.on('coordinates', function(coords){
+//     io.emit('my coords', coords);
+//     console.log('a player' + coords)
+//   })
+// })
+
+io.on('connection', function(socket){
+  console.log('USER CONNECTED')
+  console.log(connections.length)
+  if (connections.length == 0){
+    connections.push('user0')
+  }
+  else if (connections[0] == 'user0'){
+    connections.push('user'+counter.toString())
+    counter +=1;
+  }
+  socket.emit('sendClientUsername', connections.slice(-1)[0])
+  console.log(connections.slice(-1)[0])
+
+  if (allPlayers.length > 0){
+    socket.emit('allExistingPlayers', allPlayers)
+  }
+
+  socket.on('sendingNewPlayer', function(player){
+    console.log('New Player BroadCasted')
+    allPlayers.push(player)
+    socket.broadcast.emit('broadcastingNewPlayer', player)
+  })
+
+  socket.on('playerMoved', function(coords){
+    console.log('message: ' + coords);
+    socket.broadcast.emit('newPlayerCoords', coords);
+  });
+  socket.on('disconnect', function(){
+    console.log('user disconnected');
+  });
+});
+
 
 
 http.listen(8000, function(){

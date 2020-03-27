@@ -1,37 +1,8 @@
 var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext("2d");
 
-//// TODO:
-//_______________________________________________________
-//
-/*
-Fix:
-see if class method can be used with raf.
-pretty sure no but having a designated function sucks
-
-
-
-Develop:
-attack method for player
-
-look into player sprites:
-draw them in canvas or import image?
-
-game objects
-*/
-function toDegrees(angle){return angle*180/Math.PI};
-function toRadians(angle){return angle*Math.PI/180};
-
-function pickSide(rightSide){
-  //this returns an offset and a scalar
-  //offset is 0 or playerwidth, scalar is for direction (1 or -1)
-  if (rightSide == false){return [0, -1]}
-  else if (rightSide == true){return [playerWidth, 1]}
-}
-
 class Canvas {
   constructor(ctx) {this.ctx = ctx};
-
   drawBoard() {
     //clears frame every time
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -69,221 +40,146 @@ class Canvas {
 
 }
 
-let myCanvas = new Canvas(ctx);
-
+//at the moment, this doesn't do anything
+//this is extra structure that I don't yet need but might want
 class Component {
-  constructor(name, xcoord, ycoord, boundaries){
+  constructor(ctx, name, xcoord, ycoord, color, dimensions){
+    this.ctx = ctx;
     this.name = name;
     this.xcoord = xcoord;
     this.ycoord = ycoord;
-    this.boundaries = boundaries;
-  }
-  checkCollision(objectList){
-    //may need to do something to make sure objectList is a 1d array
-    //at the moment, collision only measures perfect alignment. this will change
-    for (let i = 0; i<objectList.length; i++){
-      for (let p = 0; p<objectList.length; p++){
-        if (i==p){
+    this.dimensions = dimensions;
+    this.color = color}
+}
 
-          //pass
-        }
-        //this if statement is where the magic happens
-        //to make the collision thing more precise, things need to get changed here
-        //also, i will need to establish object boundaries
-        //right now 25 is the player boundary
-        if (p != i){
-          if (Math.abs(objectList[i].xcoord - objectList[p].xcoord) < 25){
-            if (Math.abs(objectList[i].ycoord - objectList[p].ycoord) < 25){
-              alert('acollision')
-              return true
-            }
-          }
-        }
-
-        // if ((p != i) &&(objectList[i].xcoord == objectList[p].xcoord) && (objectList[i].ycoord == objectList[p].ycoord)){
-        //   alert('collision')
-        //   return true};
-      }}//end the for loops
-  }//end function
-}//end class
+//Runs stuff
+let myCanvas = new Canvas(ctx);
+myCanvas.drawBoard();
 
 class Player extends Component{
   //lots of stuff will need to be added to this (maybe)
-  constructor(ctx, xcoord, ycoord, startAngle, boundaries, name){
-    super(name, xcoord, ycoord);
-    this.ctx = ctx;
-    // this.xcoord = xcoord;
-    // this.ycoord = ycoord;
-    this.startAngle = startAngle;
-
+  constructor(ctx, xcoord, ycoord, dimensions, color, name){
+    super(ctx, name, xcoord, ycoord, color, dimensions);
+  }
+  moveTo(x, y){
+    this.xcoord = x;
+    this.ycoord = y;
+    myCanvas.drawBoard();
+    this.drawPlayer()
+    return [this.xcoord, this.ycoord];
   }
   //move methods
-  moveDirection(xy, lr){
-    //xy for horizontal vs vertical: true = x, false =y
-    //lr for direction: 1 is positive (down, right), -1 is negative (up, left)
+  moveDirection(isHorizontal, posNeg, playerList){
+    var storeList = playerList;
+    var self = this;
+    //isHorizontal for horizontal vs vertical: true = x, false =y
+    //posNeg for direction: 1 is positive (down, right), -1 is negative (up, left). Also determines speed.
     for (let i=0; i<2; i++){
-      if (xy===true){
-        this.xcoord=this.xcoord+lr;
-      }
-      else if (xy === false){
-        this.ycoord = this.ycoord+lr;
-      }
-      myCanvas.drawBoard();
-      ctx.beginPath();
-      ctx.fillRect(this.xcoord, this.ycoord, 25, 25);
-      ctx.stroke();
-    }
-  return [this.xcoord, this.ycoord];
-}
+      if (isHorizontal===true){this.xcoord=this.xcoord+posNeg}
+      else if (isHorizontal === false){this.ycoord = this.ycoord+posNeg}};
+    myCanvas.drawBoard();
+    // console.log(playerList)
+    // for (let p = 0; p < storeList; p++){
+    //   storeList[p].drawPlayer();
+    // }
+    this.drawPlayer()
+    otherPlayer.drawPlayer();
+
+    let raf = window.requestAnimationFrame(function(){self.moveDirection(isHorizontal, posNeg)});
+    window.addEventListener(event="keyup", function(e){window.cancelAnimationFrame(raf)})
+    socket.emit('playerMoved', [myUser, this.xcoord, this.ycoord]);
+    return [this.xcoord, this.ycoord];
+  }
 
   drawPlayer(){
-    //testing the extended class
     ctx.beginPath();
     //draws "player"
-    ctx.fillStyle = "blue";
-    ctx.fillRect(this.xcoord, this.ycoord, 25, 25);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.xcoord, this.ycoord, this.dimensions[0], this.dimensions[1]);
     ctx.stroke();
   }
+}
 
-  //animates the down-swing
+var myUser = []
+var player1 = null;
+var existingPlayers = []
+let player1Dimensions = [25, 25];
 
-  meleeAttack(off_scal){
-    let swordLength = 30;
-    let swingSpeed = 2;
-    for (let i = 0; i<2; i++){
 
-      //changing the start angle by more each time increases the speed
-      //starting at 1, may increase
-      this.startAngle = this.startAngle-swingSpeed;
-      //positions for the end of the sword
-      let swordX = Math.cos(toRadians(this.startAngle))*swordLength;
-      let swordY = Math.sin(toRadians(this.startAngle))*swordLength;
-      // swordX = Math.cos(startAngle)
-      myCanvas.drawBoard();
-      //this draws the sword
-      //this will need to be changed for better graphics
-      ctx.beginPath()
-      ctx.fillStyle = "red";
-      //x coordinate of the sword. depends on player and offset
-      ctx.moveTo(this.xcoord + off_scal[0], this.ycoord);
-      //y coord of sword. this
-      ctx.lineTo(this.xcoord+(swordX*off_scal[1])+off_scal[0], this.ycoord-swordY)
-      ctx.stroke()
-    }
-    //this is some badly written code to stop the loop error
-    if (this.startAngle > -90){return(this.startAngle)};
-    if (this.startAngle <= -90){
-      this.startAngle = 90;
-      return (-91)};
+//socket stuff
+var socket = io();
+socket.on('sendClientUsername', function(user){
+  myUser.length = 0;
+  myUser.push(user);
+  player1 = new Player(ctx, 200, 300, player1Dimensions, 'green', myUser[0])
+  socket.emit('sendingNewPlayer', player1);
+})
+
+socket.on('allExistingPlayers', function(players){
+  existingPlayers = players;
+  console.log('all players loaded')
+  console.log(existingPlayers)
+})
+
+socket.on('broadcastingNewPlayer', function(player){
+  existingPlayers.push(player);
+  console.log('new player loaded')
+  console.log(existingPlayers)
+})
+
+// let otherPlayer = new Player(ctx, 500, 500, player1Dimensions, 'red', 'otherPlayer');
+
+playerList = [player1, otherPlayer]
+
+
+socket.on('newPlayerCoords', function(coords){
+  console.log('recieving coords')
+  if (coords[0] == myUser[0]){
+    console.log('my own coords')
+    return true
   }
-
-
-}
-
-let playerWidth = 25;
-let playerHeight = 25;
-let playerX = 200;
-let playerY = 300;
-let boundaries = [[playerX, playerY], [playerX+playerWidth, playerY], [playerX, playerY+playerHeight], [playerX+playerWidth, playerY+playerHeight]];
-//creating 2 players for development purposes:
-let player1 = new Player(ctx, playerX, playerY, 90, boundaries, 'player1');
-
-//defining player2
-let player2Width = 25;
-let player2Height = 25;
-let player2X = 400;
-let player2Y = 500;
-let boundaries2 = [[player2X, player2Y], [player2X+player2Width, player2Y], [player2X, player2Y+player2Height], [player2X+player2Width, player2Y+player2Height]];
-let player2 = new Player(ctx, player2X, player2Y, 90, boundaries2, 'player2');
-//all new players get added to this list
-let playerList = [player1, player2]
-
-
-//for some stupid reason, requestAnimationFrame only works when calling a function
-//it doesnt work when calling the method of a class
-
-//organizing player move into one function
-function renderMove(xy, lr, playerList, player){
-  let coords = player.moveDirection(xy, lr);
-  for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
-  let raf = window.requestAnimationFrame(function(){renderMove(xy, lr, playerList, player)});
-  window.addEventListener(event="keyup", function(e){window.cancelAnimationFrame(raf)});
-  if (coords[0] >= 1300){window.cancelAnimationFrame(raf)};
-  if (player1.checkCollision(playerList)==true){
-    window.cancelAnimationFrame(raf)
+  else {
+    console.log('Another Player Moved')
+    console.log(existingPlayers);
+    otherPlayer.drawPlayer()
+    player1.drawPlayer()
+    otherPlayer.moveTo(coords[1], coords[2]);
   }
-}
-
-function renderMeleeAttack(playerList, player, rightSide){
-  let ins_list = pickSide(rightSide);
-  //calls player melee attack function
-  let matak = player.meleeAttack(ins_list);
-  //draws player every time this runs (to refresh the board)
-  for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
-  //starts requestAnimationFrame
-  let raf2 = window.requestAnimationFrame(function(){renderMeleeAttack(playerList, player, rightSide)})
-
-  let limitAngle = -90
-  if (matak < limitAngle){
-    window.cancelAnimationFrame(raf2);
-  }
-}
-
-
-// NOTE: my current problem of players disappearing when others move
-//could possibly be solved by a player list input into the drawBoard() function
-function drawAllPlayers(playerList){
-  myCanvas.drawBoard();
-  for (let i = 0; i<playerList.length; i++){playerList[i].drawPlayer()};
-}
-//runs on start
-drawAllPlayers(playerList);
-
-function swingSide(player, mouseX){
-  if (mouseX > player.xcoord){return true}
-  else if (mouseX < player.xcoord){return false}
-}
-
-window.addEventListener(event ="click", function(e){
-  let side = swingSide(player1, e.clientX);
-  window.requestAnimationFrame(function(){
-    renderMeleeAttack(playerList, player1, side);
-  })
-
 })
 
 window.addEventListener(event="keydown", function(e){
-  console.log('raf firing')
   if (e.repeat == true){return true};
 
   switch (e.keyCode){
-    //arrow keys control player 1
     case 39:
-      window.requestAnimationFrame(function(){renderMove(true, 1, playerList, player1)});
+      let outsideRaf = window.requestAnimationFrame(function(){
+        console.log(typeof(playerList));
+        // player1.moveDirection(true, 1, playerList)
+        // renderMove(player1);
+      })
       break;
+
     case 37:
-      window.requestAnimationFrame(function(){renderMove(true, -1, playerList, player1)});
+      window.requestAnimationFrame(function(){player1.moveDirection(true, -1, playerList)});
       break;
+
     case 38:
-      window.requestAnimationFrame(function(){renderMove(false, -1, playerList, player1)});
+      window.requestAnimationFrame(function(){player1.moveDirection(false, -1, playerList)});
       break;
+
     case 40:
-      window.requestAnimationFrame(function(){renderMove(false, 1, playerList, player1)});
+      window.requestAnimationFrame(function(){player1.moveDirection(false, 1, playerList)});
       break;
-    //these cases are for player 2 (note rendermove2. I could try making one function but it would be a pain in the butt)
-    //WASD keys control player 2
-    case 68:
-      window.requestAnimationFrame(function(){renderMove(true, 1, playerList, player2)});
-      break;
-    case 65:
-      window.requestAnimationFrame(function(){renderMove(true, -1, playerList, player2)});
-      break;
-    case 87:
-      window.requestAnimationFrame(function(){renderMove(false, -1, playerList, player2)});
-      break;
-    case 83:
-      window.requestAnimationFrame(function(){renderMove(false, 1, playerList, player2)});
-      break;
+
   }
-  drawAllPlayers(playerList);
 })
+
+
+//for debugging purposes only:
+// function renderMove(player){
+//   let coords = player.moveDirection(true, 1)
+//   let raf = window.requestAnimationFrame(function(){renderMove(player)})
+//   window.addEventListener(event="keyup", function(e){
+//     window.cancelAnimationFrame(raf);
+//   })
+// }
