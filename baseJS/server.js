@@ -46,10 +46,23 @@ io.on('connection', function(socket){
     socket.broadcast.emit('broadcastingNewPlayer', user)
   })
 
+//this code will soon be obsolete, but I am leaving it in to avoid breaking stuff
   socket.on('playerMoved', function(coords){
     console.log('message: ' + coords);
     socket.broadcast.emit('newPlayerCoords', coords);
   });
+//ends here _______________________________________________________
+
+  socket.on('keyPressed', function(user, key){
+    // console.log('KEYPRESSED' + user + key)
+    socket.broadcast.emit('userKey', [user, key])
+  })
+
+  socket.on('keyReleased', function(user){
+    // console.log('KEY RELEASED' + user)
+    socket.broadcast.emit('userKeyRelease', user)
+  })
+
   socket.on('disconnect', function(){
     console.log('user disconnected');
   });
