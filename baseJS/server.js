@@ -25,20 +25,26 @@ let gameSettings = {
   playerHeight: 25,
   //the send interval determines how ofter i emit basic game information to all users
   //this is slowed down for development purposes, but when finalized this will be 16 milliseconds
-  sendInterval: 16 //in milliseconds
+  sendInterval: 1000 //in milliseconds
 }
 
 //this is the queue object that I emit with the send interval frequency
 //this is all the stuff that changed, and the client needs to render it
-
-
 let queue = {
-  player: [],
+  //key and action are exclusively used for player movement
   key: [],
-  action: []
+  action: [],
+  //event is for all other player functions
+  event: {
+    player: [],
+    type: [],
+    data: []
+  }
   // movePlayer: [],
 }
 
+//the queue idea worked great, but it would be nice to be able to organize what I need to do by player
+//therefore, I am planning on creating new infrastructure to update the state of each player.
 
 
 
@@ -190,14 +196,22 @@ io.on('connection', function(socket){
     }
   })
 
+  //at this point, I will add all new events into the event queue
+  //each item in this queue will contain the action type, the name of the player who did it, and any necessary information to execute the action client side.
+  socket.on('requestingSwing', function(mouseX){
+    console.log(name, 'is requesting to swing')
+    queue.event.player.push(getNameFromId(socket.id));
+    queue.event.type.push('Swing');
+    queue.event.data.push(mouseX)
+  })
+
   setInterval(()=>{
-    for (let i = 0; i < connections.length; i++){
-      queue.player.push(connections[i][0])
-    }
     // console.log('interval firing')
-    // console.log('outbound queue', queue)
+    console.log('outbound queue', queue)
     io.emit('sendingData', queue)
-    queue.player = [];
+    queue.event.player = [];
+    queue.event.type = [];
+    queue.event.data = [];
 
   }, gameSettings.sendInterval);
 });

@@ -1,5 +1,10 @@
+function toDegrees(angle){return angle*180/Math.PI};
+function toRadians(angle){return angle*Math.PI/180};
+
 class Canvas {
-  constructor(ctx) {this.ctx = ctx};
+  constructor(players) {
+    this.players = players;
+  };
   drawBoard() {
     //clears frame every time
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -7,9 +12,9 @@ class Canvas {
     //draw game outline
     let screenWidth = canvas.width;
     let screenHeight = canvas.height;
-    let topMargin = 0;
+    const topMargin = 0;
     //easily changed
-    let gridSize = 25;
+    const gridSize = 25;
     //horizontal lines
     for (let i = 0; i < screenHeight; i++){
       ctx.beginPath();
@@ -37,9 +42,9 @@ class Canvas {
 
 }
 
-let myCanvas = new Canvas(ctx);
+let myCanvas = new Canvas([]);
 
-//at the moment, this doesn't do anything
+//at the moment, this Component class doesnt add much
 //this is extra structure that I don't yet need but might want
 class Component {
   constructor(ctx, name, xcoord, ycoord, color, dimensions){
@@ -49,6 +54,66 @@ class Component {
     this.ycoord = ycoord;
     this.dimensions = dimensions;
     this.color = color}
+}
+
+//now I am glad to have the extra structure
+class Sword extends Component{
+  constructor(ctx, xcoord, ycoord, color, name, playerSword){
+    super(ctx, xcoord, ycoord, name, color);
+    this.playerSword = playerSword;
+    this.startAngle = 90;
+  }
+  drawSword(){
+    //just draws
+  }
+
+  pickSidetoSwing(mouseX, playerX){
+    if (mouseX > playerX){
+      return [gameSettings.playerwidth, -1]
+    }
+    else if (mouseX < playerX){
+
+      //returns [offset, scalar]
+      //scalar determines swing direction, offset ensures it is at the edge of the player
+      return [0, 1]
+    }
+  }
+
+  swingSword(mouseX, playerX){
+    let off_scal = this.pickSidetoSwing(mouseX, playerX)
+
+    //either of these could be updated in the constructor
+    const swordLength = 30;
+    const swingSpeed = 2;
+
+    for (let i = 0; i<2; i++){
+      //changing the start angle by more each time increases the speed
+      this.startAngle = this.startAngle-swingSpeed;
+
+      //positions for the end of the sword
+      let swordX = Math.cos(toRadians(this.startAngle))*swordLength;
+      let swordY = Math.sin(toRadians(this.startAngle))*swordLength;
+      // swordX = Math.cos(startAngle)
+      myCanvas.drawBoard();
+
+      //this draws the sword
+      //this will need to be changed for better graphics
+      ctx.beginPath()
+      ctx.fillStyle = "red";
+      //x coordinate of the sword. depends on player and offset
+      ctx.moveTo(this.xcoord + off_scal[0], this.ycoord);
+      //y coord of sword. this
+      ctx.lineTo(this.xcoord+(swordX*off_scal[1])+off_scal[0], this.ycoord-swordY)
+      ctx.stroke()
+    }
+
+    //this is some badly written code to stop the loop error
+    if (this.startAngle > -90){return(this.startAngle)};
+    if (this.startAngle <= -90){
+      this.startAngle = 90;
+      return (-91)};
+  }
+
 }
 
 class Player extends Component{
@@ -73,37 +138,19 @@ class Player extends Component{
 
   //planning on making a new move method instead of an old one
   moveDirection(angle){
+    const speed = 1;
     for (let i = 0; i<2; i++){
-      if (angle == 0){this.ycoord -=1}
-      else if (angle == 180){this.ycoord +=1}
-      else if (angle == 90){this.xcoord +=1}
-      else if (angle == 270){this.xcoord -=1}
+      if (angle == 0){this.ycoord -=speed}
+      else if (angle == 180){this.ycoord +=speed}
+      else if (angle == 90){this.xcoord +=speed}
+      else if (angle == 270){this.xcoord -=speed}
     }
+
     myCanvas.drawBoard();
     this.drawPlayer();
     return [this.xcoord, this.ycoord];
   }
 
-  // move2Direction(isHorizontal, posNeg){
-  //   // console.log('function called')
-  //   var self = this;
-  //   //isHorizontal for horizontal vs vertical: true = x, false =y
-  //   //posNeg for direction: 1 is positive (down, right), -1 is negative (up, left). Also determines speed.
-  //
-  //   //time cancels the loop automatically and reruns it
-  //   this.time +=1;
-  //
-  //
-  //   for (let i=0; i<2; i++){
-  //     if (isHorizontal===true){this.xcoord +=posNeg}
-  //     else if (isHorizontal === false){this.ycoord +=posNeg}};
-  //   myCanvas.drawBoard();
-  //   // for (let p; p< existingPlayers.length; p++){
-  //   //   existingPlayers[p].drawPlayer();
-  //   // }
-  //   this.drawPlayer()
-  //   return [this.xcoord, this.ycoord];
-  // }
 
   drawPlayer(){
     ctx.beginPath();
@@ -113,12 +160,11 @@ class Player extends Component{
     ctx.stroke();
   }
 
-  requestMove(keycode){
-      socket.emit('requestingMove', keycode)
-  }
+  requestMove(keycode){socket.emit('requestingMove', keycode)}
+  requestStop(keycode){socket.emit('requestingStop', keycode)}
 
-  requestStop(keycode){
-    socket.emit('requestingStop', keycode)
+  requestSwing(mouseX){
+    socket.emit('requestingSwing', mouseX)
   }
 
 }
@@ -135,16 +181,22 @@ var socket = io();
 let myUsername;
 let player1;
 let existingPlayers = [];
+
+//will be adding weapons to this list
+let playerWeapons = [];
+
 let gameSettings;
 let playerDimensions;
 
 let toRender = {
-  player: [],
   key: [],
   action: [],
-  angle: []
-  // movePlayer: []
 
+  event: {
+    player: [],
+    type: [],
+    data: []
+  }
 }
 let otherPlayer;
 
@@ -167,7 +219,11 @@ socket.on('sendClientUsername', function(user){
   myUsername = user;
   //this player is me
   existingPlayers.push(new Player(ctx, 200, 300, playerDimensions, 'green', myCanvas, myUsername));
+
+  playerWeapons.push(new Sword(ctx, 200, 300, 'black', 'asword', myUsername));
   player1 = existingPlayers.slice(-1)[0];
+  sword1 = playerWeapons.slice(-1)[0];
+  //// NOTE: I am not sending swords yet.
   socket.emit('sendingNewPlayer', user);
 })
 
@@ -207,21 +263,28 @@ window.addEventListener(event="keyup", function(e){
   player1.requestStop(keycode);
 })
 
+
+
+window.addEventListener(event="click", function(e){
+  let mouseX = e.clientX;
+  player1.requestSwing(mouseX);
+})
+
 socket.on('sendingData', function(queue){
   //this for loop converts the user id recieved from the server and converts it into its corresponding instance of the player class
   // toRender.player = [];
   // for (let i = 0; i<queue.player.length; i++){toRender.player.push(getPlayerbyName(queue.player[i]))}
 
   // toRender.player.push(getPlayerbyName(queue.player))
+  //clear movement arrays
   toRender.key = []
   toRender.key.push(queue.key)
-  // console.log(toRender.key)
-  // toRender.angle = []
-  // toRender.angle.push(queue.angle);
-  // console.log(toRender.angle)
 
   toRender.action = [];
   toRender.action.push(queue.action)
+
+  toRender.event = queue.event;
+  console.log(toRender.event)
   // render()
 })
 
@@ -259,7 +322,8 @@ function getAngleFromKey(key){
 
 //needs to get updated
 function animate(){
-  // console.log('animating')
+
+  //this code animates player movement:
   if ((toRender.action[0] != undefined)){
     //if there are any actions to execute
     if (toRender.action[0][0] != undefined){
@@ -269,19 +333,60 @@ function animate(){
         let player = getPlayerbyName(toRender.action[0][i])
         if (player != undefined){
           player.drawPlayer()
+          //render every key pressed
           for (let k = 0; k<toRender.key[0][i].length; k++){
             let angle = getAngleFromKey(toRender.key[0][i][k]);
             player.moveDirection(angle)
             drawAllPlayers(existingPlayers)
           }
-
-
         }
-
       }
     }
   }
-  // toRender.action = []
+
+  //this code handles events:
+  //parses through all events
+  for (let i = 0; i<toRender.event.type.length; i++){
+
+    //checks for types of events
+    if (toRender.event.type[i] == 'Swing'){
+      let player = getPlayerbyName(toRender.event.player[i]);
+
+    }
+    //add literally anything i want here
+    //else if (toRender.event.type[i] == 'Shoot'){}
+
+  }
+
+
+  if (toRender.event.type == '')
+  // if (toRender.swing[0] != undefined){
+  //   if (toRender.swing[0][0] != undefined){
+  //     console.log('swinging')
+  //
+  //     for (let i = 0; i < toRender.swing[0].length; i++){
+  //       let actingPlayer = getPlayerbyName(toRender.swing[0][i][0]);
+  //       if (actingPlayer != undefined){
+  //         console.log('drawing player')
+  //         actingPlayer.drawPlayer()
+  //         //consider adding a for loop to render every key pressed, for now no need;
+  //         //access sword from player name
+  //         for (let k = 0; k<existingPlayers.length; k++){
+  //           console.log('parsing')
+  //           if (existingPlayers[k].name == toRender.swing[0][i][0]){
+  //             console.log('found player')
+  //             let actingSword = playerWeapons[k];
+  //             console.log(actingSword);
+  //             actingSword.swingSword(toRender.swing[0][i][1], existingPlayers[k].xcoord);
+  //             drawAllPlayers(existingPlayers);
+  //           }
+  //         }
+  //       }
+  //     }
+  //
+  //   }
+  // }
+
   window.requestAnimationFrame(function(){
     animate()
   })
